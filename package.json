@@ -1,0 +1,63 @@
+{
+  "name": "vscode-ocaml-reason-format",
+  "displayName": "vscode-ocaml-reason-format",
+  "author": "Rusty Key <mail@stfoo.ru> (https://github.com/rusty-key)",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.31.0"
+  },
+  "categories": [
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onLanguage:ocaml",
+    "onLanguage:reason"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [{
+      "command": "extension.format",
+      "title": "Format World"
+    }],
+    "languages": [{
+      "id": "ocaml",
+      "aliases": ["OCaml"],
+      "extensions": [".ml", ".mli"]
+    }, {
+      "id": "reason",
+      "aliases": ["Reason"],
+      "extensions": [".re", ".rei"]
+    }],
+    "configuration": {
+      "type": "object",
+      "title": "Formatter configuration",
+      "properties": {
+        "ocaml-reason-format.ocamlformat": {
+          "type": "string",
+          "default": "ocamlformat",
+          "description": "The path to the `ocamlformat` binary."
+        },
+        "ocaml-reason-format.refmt": {
+          "type": "string",
+          "default": "refmt",
+          "description": "The path to the `refmt` binary."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "postinstall": "node ./node_modules/vscode/bin/install",
+    "test": "yarn run compile && node ./node_modules/vscode/bin/test"
+  },
+  "devDependencies": {
+    "typescript": "^3.3.1",
+    "vscode": "^1.1.28",
+    "tslint": "^5.12.1",
+    "@types/node": "^10.12.21",
+    "@types/mocha": "^2.2.42"
+  }
+}
