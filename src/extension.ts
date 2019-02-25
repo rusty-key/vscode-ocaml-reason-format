@@ -30,11 +30,12 @@ function formatWith(formatterPath: any, extraParam="") {
 
 export function activate(context: vscode.ExtensionContext) {
   const configuration = vscode.workspace.getConfiguration("ocaml-reason-format")
+  const rootPath = vscode.workspace.rootPath || "";
 
   vscode.languages.registerDocumentFormattingEditProvider('ocaml', {
     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
       const formatterPath = configuration.get<string | undefined>("ocamlformat")
-      const formatter = formatterPath ? path.resolve(__dirname, formatterPath) : "ocamlformat"
+      const formatter = formatterPath ? path.resolve(rootPath, formatterPath) : "ocamlformat"
       return formatter ? formatWith(formatter, "/dev/stdin") : []
     }
   })
@@ -42,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
   vscode.languages.registerDocumentFormattingEditProvider('reason', {
     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
       const formatterPath = configuration.get<string | undefined>("refmt")
-      const formatter = formatterPath ? path.resolve(__dirname, formatterPath) : "refmt"
+      const formatter = formatterPath ? path.resolve(rootPath, formatterPath) : "refmt"
       return formatter ? formatWith(formatter) : []
     }
   })
