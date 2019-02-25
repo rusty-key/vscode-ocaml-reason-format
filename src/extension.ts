@@ -1,3 +1,4 @@
+import * as path from 'path'
 import * as vscode from 'vscode'
 import { execSync } from 'child_process'
 
@@ -32,14 +33,16 @@ export function activate(context: vscode.ExtensionContext) {
 
   vscode.languages.registerDocumentFormattingEditProvider('ocaml', {
     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-      const formatter = configuration.get("ocamlformat")
+      const formatterPath = configuration.get<string | undefined>("ocamlformat")
+      const formatter = formatterPath ? path.resolve(__dirname, formatterPath) : "ocamlformat"
       return formatter ? formatWith(formatter, "/dev/stdin") : []
     }
   })
 
   vscode.languages.registerDocumentFormattingEditProvider('reason', {
     provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-      const formatter = configuration.get("refmt")
+      const formatterPath = configuration.get<string | undefined>("refmt")
+      const formatter = formatterPath ? path.resolve(__dirname, formatterPath) : "refmt"
       return formatter ? formatWith(formatter) : []
     }
   })

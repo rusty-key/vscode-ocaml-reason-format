@@ -2,8 +2,13 @@
   "name": "vscode-ocaml-reason-format",
   "displayName": "vscode-ocaml-reason-format",
   "author": "Rusty Key <mail@stfoo.ru> (https://github.com/rusty-key)",
-  "description": "",
-  "version": "0.0.1",
+  "publisher": "rustykey",
+  "description": "Formatters for OCaml and Reason code",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:rusty-key/vscode-ocaml-reason-format.git"
+  },
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.31.0"
   },
@@ -16,10 +21,6 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [{
-      "command": "extension.format",
-      "title": "Format World"
-    }],
     "languages": [{
       "id": "ocaml",
       "aliases": ["OCaml"],
