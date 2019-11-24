@@ -29,8 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
       const formatterPath = configuration.get<string | undefined>(
         "ocamlformat"
       );
-      var formatter = formatterPath || "ocamlformat";
-      formatter = path.resolve(rootPath, formatter);
+      const formatter = formatterPath || "ocamlformat";
       const textEditor = vscode.window.activeTextEditor;
 
       if (textEditor) {
