@@ -26,13 +26,10 @@ export function activate(context: vscode.ExtensionContext) {
     provideDocumentFormattingEdits(
       _document: vscode.TextDocument
     ): vscode.TextEdit[] {
-      const formatterPath = configuration.get<string | undefined>(
-        "ocamlformat"
-      );
-      const formatter = formatterPath || "ocamlformat";
       const textEditor = vscode.window.activeTextEditor;
-
       if (textEditor) {
+        const formatter =
+          configuration.get<string>("ocamlformat") || "ocamlformat";
         const text = textEditor.document.getText();
         const filePath = textEditor.document.fileName;
         const command = `cd ${rootPath} && '${formatter}' --name='${filePath}' -`;
