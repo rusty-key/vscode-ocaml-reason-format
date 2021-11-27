@@ -1,6 +1,16 @@
 import * as path from 'path'
 import * as vscode from 'vscode'
-import { execSync } from 'child_process'
+import * as process from 'child_process'
+import * as fs from 'fs'
+import * as uuid from 'uuid';
+
+const tmpDir = "/tmp/vscode-ocaml-reason-format"
+
+function prepareTmpDir() {
+  if (!fs.existsSync(tmpDir)){
+    fs.mkdirSync(tmpDir, { recursive: true });
+  }
+}
 
 function getFullTextRange(textEditor: vscode.TextEditor) {
   const firstLine = textEditor.document.lineAt(0)
@@ -25,9 +35,14 @@ export function activate(context: vscode.ExtensionContext) {
       const textEditor = vscode.window.activeTextEditor
 
       if (textEditor) {
-        const text = textEditor.document.getText()
         const filePath = textEditor.document.fileName
-        const formattedText = execSync(`cd ${rootPath} && ${formatter} --name=${filePath} /dev/stdin <<<'${text}'`, {cwd: rootPath}).toString()
+        const extName = path.extname(filePath)
+        const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
+
+        prepareTmpDir()
+        process.execSync(`cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`)
+
+        const formattedText = fs.readFileSync(tmpFilePath, 'utf8');
         const textRange = getFullTextRange(textEditor)
 
         return [vscode.TextEdit.replace(textRange, formattedText)]
@@ -44,9 +59,18 @@ export function activate(context: vscode.ExtensionContext) {
       const textEditor = vscode.window.activeTextEditor
 
       if (textEditor) {
-        const text = textEditor.document.getText()
-        const formattedText = execSync(`${formatter} <<<'${text}'`).toString()
+        const filePath = textEditor.document.fileName
+        const extName = path.extname(filePath)
+        const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
+
+        prepareTmpDir()
+        fs.copyFileSync(filePath, tmpFilePath)
+        process.execSync(`${formatter} ${tmpFilePath}`).toString()
+
+        const formattedText = fs.readFileSync(tmpFilePath, 'utf8');
         const textRange = getFullTextRange(textEditor)
+
+        fs.unlinkSync(tmpFilePath)
 
         return [vscode.TextEdit.replace(textRange, formattedText)]
       } else {
