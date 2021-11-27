@@ -21,15 +21,28 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
-    "languages": [{
-      "id": "ocaml",
-      "aliases": ["OCaml"],
-      "extensions": [".ml", ".mli"]
-    }, {
-      "id": "reason",
-      "aliases": ["Reason"],
-      "extensions": [".re", ".rei"]
-    }],
+    "languages": [
+      {
+        "id": "ocaml",
+        "aliases": [
+          "OCaml"
+        ],
+        "extensions": [
+          ".ml",
+          ".mli"
+        ]
+      },
+      {
+        "id": "reason",
+        "aliases": [
+          "Reason"
+        ],
+        "extensions": [
+          ".re",
+          ".rei"
+        ]
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Formatter configuration",
@@ -55,10 +68,10 @@
     "test": "yarn run compile && node ./node_modules/vscode/bin/test"
   },
   "devDependencies": {
-    "typescript": "^3.3.1",
-    "vscode": "^1.1.28",
-    "tslint": "^5.12.1",
+    "@types/mocha": "^2.2.42",
     "@types/node": "^10.12.21",
-    "@types/mocha": "^2.2.42"
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.1",
+    "vscode": "^1.1.28"
   }
 }
