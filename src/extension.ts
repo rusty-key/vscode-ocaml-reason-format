@@ -1,8 +1,8 @@
-import * as path from 'path'
-import * as vscode from 'vscode'
-import * as process from 'child_process'
 import * as fs from 'fs'
+import * as path from 'path'
+import * as process from 'child_process'
 import * as uuid from 'uuid'
+import * as vscode from 'vscode'
 
 const tmpDir = '/tmp/vscode-ocaml-reason-format'
 
