@@ -2,13 +2,13 @@ import * as path from 'path'
 import * as vscode from 'vscode'
 import * as process from 'child_process'
 import * as fs from 'fs'
-import * as uuid from 'uuid';
+import * as uuid from 'uuid'
 
-const tmpDir = "/tmp/vscode-ocaml-reason-format"
+const tmpDir = '/tmp/vscode-ocaml-reason-format'
 
 function prepareTmpDir() {
-  if (!fs.existsSync(tmpDir)){
-    fs.mkdirSync(tmpDir, { recursive: true });
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true })
   }
 }
 
@@ -20,18 +20,22 @@ function getFullTextRange(textEditor: vscode.TextEditor) {
     0,
     firstLine.range.start.character,
     textEditor.document.lineCount - 1,
-    lastLine.range.end.character
+    lastLine.range.end.character,
   )
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  const configuration = vscode.workspace.getConfiguration("ocaml-reason-format")
-  const rootPath = vscode.workspace.rootPath || "";
+  const configuration = vscode.workspace.getConfiguration('ocaml-reason-format')
+  const rootPath = vscode.workspace.rootPath || ''
 
   vscode.languages.registerDocumentFormattingEditProvider('ocaml', {
-    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-      const formatterPath = configuration.get<string | undefined>("ocamlformat")
-      const formatter = formatterPath ? path.resolve(rootPath, formatterPath) : "ocamlformat"
+    provideDocumentFormattingEdits(
+      document: vscode.TextDocument,
+    ): vscode.TextEdit[] {
+      const formatterPath = configuration.get<string | undefined>('ocamlformat')
+      const formatter = formatterPath
+        ? path.resolve(rootPath, formatterPath)
+        : 'ocamlformat'
       const textEditor = vscode.window.activeTextEditor
 
       if (textEditor) {
@@ -40,22 +44,28 @@ export function activate(context: vscode.ExtensionContext) {
         const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
 
         prepareTmpDir()
-        process.execSync(`cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`)
+        process.execSync(
+          `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`,
+        )
 
-        const formattedText = fs.readFileSync(tmpFilePath, 'utf8');
+        const formattedText = fs.readFileSync(tmpFilePath, 'utf8')
         const textRange = getFullTextRange(textEditor)
 
         return [vscode.TextEdit.replace(textRange, formattedText)]
       } else {
         return []
       }
-    }
+    },
   })
 
   vscode.languages.registerDocumentFormattingEditProvider('reason', {
-    provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
-      const formatterPath = configuration.get<string | undefined>("refmt")
-      const formatter = formatterPath ? path.resolve(rootPath, formatterPath) : "refmt"
+    provideDocumentFormattingEdits(
+      document: vscode.TextDocument,
+    ): vscode.TextEdit[] {
+      const formatterPath = configuration.get<string | undefined>('refmt')
+      const formatter = formatterPath
+        ? path.resolve(rootPath, formatterPath)
+        : 'refmt'
       const textEditor = vscode.window.activeTextEditor
 
       if (textEditor) {
@@ -67,7 +77,7 @@ export function activate(context: vscode.ExtensionContext) {
         fs.copyFileSync(filePath, tmpFilePath)
         process.execSync(`${formatter} ${tmpFilePath}`).toString()
 
-        const formattedText = fs.readFileSync(tmpFilePath, 'utf8');
+        const formattedText = fs.readFileSync(tmpFilePath, 'utf8')
         const textRange = getFullTextRange(textEditor)
 
         fs.unlinkSync(tmpFilePath)
@@ -76,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
       } else {
         return []
       }
-    }
+    },
   })
 }
 
