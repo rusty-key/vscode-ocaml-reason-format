@@ -1,14 +1,20 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as process from 'child_process'
+import * as util from 'util'
 import * as uuid from 'uuid'
 import * as vscode from 'vscode'
 
+const exec = util.promisify(process.exec),
+  { access, mkdir, readFile, copyFile, unlink } = fs.promises
+
 const tmpDir = '/tmp/vscode-ocaml-reason-format'
 
-function prepareTmpDir() {
-  if (!fs.existsSync(tmpDir)) {
-    fs.mkdirSync(tmpDir, { recursive: true })
+async function prepareTmpDir() {
+  try {
+    await access(tmpDir)
+  } catch (e) {
+    await mkdir(tmpDir, { recursive: true })
   }
 }
 
@@ -31,9 +37,10 @@ export function activate(context: vscode.ExtensionContext) {
   const disposable1 = vscode.languages.registerDocumentFormattingEditProvider(
     'ocaml',
     {
-      provideDocumentFormattingEdits(
+      async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
-      ): vscode.TextEdit[] {
+        P,
+      ): Promise<vscode.TextEdit[]> {
         const formatterPath = configuration.get<string | undefined>(
           'ocamlformat',
         )
@@ -47,12 +54,14 @@ export function activate(context: vscode.ExtensionContext) {
           const extName = path.extname(filePath)
           const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
 
-          prepareTmpDir()
-          process.execSync(
+          await prepareTmpDir()
+          await exec(
             `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`,
           )
 
-          const formattedText = fs.readFileSync(tmpFilePath, 'utf8')
+          // TODO: Replace this with `document.getText()`, lest it break Format On Save:
+          //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
+          const formattedText = await readFile(tmpFilePath, 'utf8')
           const textRange = getFullTextRange(textEditor)
 
           return [vscode.TextEdit.replace(textRange, formattedText)]
@@ -66,9 +75,9 @@ export function activate(context: vscode.ExtensionContext) {
   const disposable2 = vscode.languages.registerDocumentFormattingEditProvider(
     'reason',
     {
-      provideDocumentFormattingEdits(
+      async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
-      ): vscode.TextEdit[] {
+      ): Promise<vscode.TextEdit[]> {
         const formatterPath = configuration.get<string | undefined>('refmt')
         const formatter = formatterPath
           ? path.resolve(rootPath, formatterPath)
@@ -81,13 +90,15 @@ export function activate(context: vscode.ExtensionContext) {
           const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
 
           prepareTmpDir()
-          fs.copyFileSync(filePath, tmpFilePath)
-          process.execSync(`${formatter} ${tmpFilePath}`).toString()
+          await copyFile(filePath, tmpFilePath)
+          await exec(`${formatter} ${tmpFilePath}`)
 
-          const formattedText = fs.readFileSync(tmpFilePath, 'utf8')
+          // TODO: Replace this with `document.getText()`, lest it break Format On Save:
+          //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
+          const formattedText = await readFile(tmpFilePath, 'utf8')
           const textRange = getFullTextRange(textEditor)
 
-          fs.unlinkSync(tmpFilePath)
+          unlink(tmpFilePath)
 
           return [vscode.TextEdit.replace(textRange, formattedText)]
         } else {
