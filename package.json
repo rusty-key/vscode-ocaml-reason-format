@@ -47,6 +47,11 @@
       "type": "object",
       "title": "Formatter configuration",
       "properties": {
+        "ocaml-reason-format.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether or not this plugin should be used for formatting"
+        },
         "ocaml-reason-format.ocamlformat": {
           "type": "string",
           "default": "ocamlformat",

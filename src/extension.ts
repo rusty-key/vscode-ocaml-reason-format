@@ -11,6 +11,10 @@ const exec = util.promisify(process.exec),
 
 let log = vscode.window.createOutputChannel('ocaml-reason-format')
 
+function isDisabled(config: vscode.WorkspaceConfiguration): boolean {
+  return config.get<boolean | undefined>('enabled') === false
+}
+
 const ourTmpDirFormat = path.join(tmpdir(), 'vscode-ocaml-reason-format-')
 
 async function prepareTmpDir() {
@@ -34,119 +38,174 @@ function getFullTextRange(textEditor: vscode.TextEditor) {
   )
 }
 
+let knownToBeEnabled = false,
+  ocamlFormatterDisposable: vscode.Disposable,
+  reasonFormatterDisposable: vscode.Disposable
+
+function registerOcamlFormatter(ctx: vscode.ExtensionContext, tmpDir: string) {
+  ocamlFormatterDisposable =
+    vscode.languages.registerDocumentFormattingEditProvider(
+      { language: 'ocaml', scheme: 'file' },
+      {
+        async provideDocumentFormattingEdits(
+          document: vscode.TextDocument,
+        ): Promise<vscode.TextEdit[] | undefined> {
+          const config = vscode.workspace.getConfiguration(
+            'ocaml-reason-format',
+          )
+          if (isDisabled(config)) {
+            log.appendLine(`Extension disabled by user configuration.`)
+            return
+          }
+
+          const rootPath = vscode.workspace.rootPath || ''
+
+          const formatterPath = config.get<string | undefined>('ocamlformat')
+          const formatter = formatterPath
+            ? path.resolve(rootPath, formatterPath)
+            : 'ocamlformat'
+          const textEditor = vscode.window.activeTextEditor
+
+          if (textEditor) {
+            log.appendLine(`Formatting document with '${formatter}'...`)
+
+            const filePath = textEditor.document.fileName
+            const extName = path.extname(filePath)
+            const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
+
+            await prepareTmpDir()
+
+            const command = `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`
+            log.appendLine('`' + command + `'`)
+            try {
+              await exec(command)
+            } catch (e) {
+              log.appendLine(e.stderr)
+              vscode.window.showErrorMessage(e.stderr)
+              throw e
+            }
+
+            // TODO: Replace this with `document.getText()`, lest it break Format On Save:
+            //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
+            const formattedText = await readFile(tmpFilePath, 'utf8')
+            const textRange = getFullTextRange(textEditor)
+
+            return [vscode.TextEdit.replace(textRange, formattedText)]
+          } else {
+            return []
+          }
+        },
+      },
+    )
+
+  ctx.subscriptions.push(ocamlFormatterDisposable)
+}
+
+function registerReasonFormatter(ctx: vscode.ExtensionContext, tmpDir: string) {
+  reasonFormatterDisposable =
+    vscode.languages.registerDocumentFormattingEditProvider(
+      { language: 'reason', scheme: 'file' },
+      {
+        async provideDocumentFormattingEdits(
+          document: vscode.TextDocument,
+        ): Promise<vscode.TextEdit[] | undefined> {
+          const config = vscode.workspace.getConfiguration(
+            'ocaml-reason-format',
+          )
+          if (isDisabled(config)) {
+            log.appendLine(`Extension disabled by user configuration.`)
+            return
+          }
+
+          const rootPath = vscode.workspace.rootPath || ''
+
+          const formatterPath = config.get<string | undefined>('refmt')
+          const formatter = formatterPath
+            ? path.resolve(rootPath, formatterPath)
+            : 'refmt'
+          const textEditor = vscode.window.activeTextEditor
+
+          if (textEditor) {
+            log.appendLine(`Formatting document with '${formatter}'...`)
+
+            const filePath = textEditor.document.fileName
+            const extName = path.extname(filePath)
+            const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
+
+            prepareTmpDir()
+            log.appendLine(`Copying '${filePath}' to '${tmpFilePath}'...`)
+            await copyFile(filePath, tmpFilePath)
+
+            const command = `${formatter} ${tmpFilePath}`
+            log.appendLine('`' + command + `'`)
+            try {
+              await exec(command)
+            } catch (e) {
+              log.appendLine(e.stderr)
+              vscode.window.showErrorMessage(e.stderr)
+              throw e
+            }
+
+            // TODO: Replace this with `document.getText()`, lest it break Format On Save:
+            //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
+            const formattedText = await readFile(tmpFilePath, 'utf8')
+            const textRange = getFullTextRange(textEditor)
+
+            log.appendLine(`Deleting '${tmpFilePath}'...`)
+            unlink(tmpFilePath)
+
+            return [vscode.TextEdit.replace(textRange, formattedText)]
+          } else {
+            return []
+          }
+        },
+      },
+    )
+
+  ctx.subscriptions.push(reasonFormatterDisposable)
+}
+
 log.appendLine(`Loading extension...`)
 
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext) {
   log.appendLine(`Activating extension...`)
+
   const ourTmpDir = await prepareTmpDir()
   log.appendLine(`Using tmpDir ${ourTmpDir}`)
 
-  const disposable1 = vscode.languages.registerDocumentFormattingEditProvider(
-    { language: 'ocaml', scheme: 'file' },
-    {
-      async provideDocumentFormattingEdits(
-        document: vscode.TextDocument,
-      ): Promise<vscode.TextEdit[]> {
-        const configuration = vscode.workspace.getConfiguration(
-          'ocaml-reason-format',
-        )
-        const rootPath = vscode.workspace.rootPath || ''
+  const config = vscode.workspace.getConfiguration('ocaml-reason-format')
+  if (isDisabled(config)) {
+    log.appendLine(`Extension disabled by user configuration.`)
+    return
+  }
 
-        const formatterPath = configuration.get<string | undefined>(
-          'ocamlformat',
-        )
-        const formatter = formatterPath
-          ? path.resolve(rootPath, formatterPath)
-          : 'ocamlformat'
-        const textEditor = vscode.window.activeTextEditor
+  registerOcamlFormatter(ctx, ourTmpDir)
+  registerReasonFormatter(ctx, ourTmpDir)
+  knownToBeEnabled = true
 
-        if (textEditor) {
-          log.appendLine(`Formatting document with '${formatter}'...`)
+  const configChangedDisposable = vscode.workspace.onDidChangeConfiguration(
+    (ev) => {
+      const affectsEnabledStatus = ev.affectsConfiguration(
+        'ocaml-reason-format.enabled',
+      )
 
-          const filePath = textEditor.document.fileName
-          const extName = path.extname(filePath)
-          const tmpFilePath = `${path.join(ourTmpDir, uuid.v4())}${extName}`
-
-          await prepareTmpDir()
-
-          const command = `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`
-          log.appendLine('`' + command + `'`)
-          try {
-            await exec(command)
-          } catch (e) {
-            log.appendLine(e.stderr)
-            vscode.window.showErrorMessage(e.stderr)
-            throw e
-          }
-
-          // TODO: Replace this with `document.getText()`, lest it break Format On Save:
-          //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
-          const formattedText = await readFile(tmpFilePath, 'utf8')
-          const textRange = getFullTextRange(textEditor)
-
-          return [vscode.TextEdit.replace(textRange, formattedText)]
-        } else {
-          return []
+      if (affectsEnabledStatus) {
+        const config = vscode.workspace.getConfiguration('ocaml-reason-format')
+        if (knownToBeEnabled && isDisabled(config)) {
+          log.appendLine(`Extension became disabled; un-registering.`)
+          knownToBeEnabled = false
+          if (ocamlFormatterDisposable) ocamlFormatterDisposable.dispose()
+          if (reasonFormatterDisposable) reasonFormatterDisposable.dispose()
+        } else if (!knownToBeEnabled && !isDisabled(config)) {
+          log.appendLine(`Extension became enabled; re-registering.`)
+          knownToBeEnabled = true
+          return activate(ctx)
         }
-      },
+      }
     },
   )
 
-  const disposable2 = vscode.languages.registerDocumentFormattingEditProvider(
-    { language: 'reason', scheme: 'file' },
-    {
-      async provideDocumentFormattingEdits(
-        document: vscode.TextDocument,
-      ): Promise<vscode.TextEdit[]> {
-        const configuration = vscode.workspace.getConfiguration(
-          'ocaml-reason-format',
-        )
-        const rootPath = vscode.workspace.rootPath || ''
-
-        const formatterPath = configuration.get<string | undefined>('refmt')
-        const formatter = formatterPath
-          ? path.resolve(rootPath, formatterPath)
-          : 'refmt'
-        const textEditor = vscode.window.activeTextEditor
-
-        if (textEditor) {
-          log.appendLine(`Formatting document with '${formatter}'...`)
-
-          const filePath = textEditor.document.fileName
-          const extName = path.extname(filePath)
-          const tmpFilePath = `${path.join(ourTmpDir, uuid.v4())}${extName}`
-
-          prepareTmpDir()
-          log.appendLine(`Copying '${filePath}' to '${tmpFilePath}'...`)
-          await copyFile(filePath, tmpFilePath)
-
-          const command = `${formatter} ${tmpFilePath}`
-          log.appendLine('`' + command + `'`)
-          try {
-            await exec(command)
-          } catch (e) {
-            log.appendLine(e.stderr)
-            vscode.window.showErrorMessage(e.stderr)
-            throw e
-          }
-
-          // TODO: Replace this with `document.getText()`, lest it break Format On Save:
-          //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
-          const formattedText = await readFile(tmpFilePath, 'utf8')
-          const textRange = getFullTextRange(textEditor)
-
-          log.appendLine(`Deleting '${tmpFilePath}'...`)
-          unlink(tmpFilePath)
-
-          return [vscode.TextEdit.replace(textRange, formattedText)]
-        } else {
-          return []
-        }
-      },
-    },
-  )
-
-  context.subscriptions.push(disposable1, disposable2)
+  ctx.subscriptions.push(configChangedDisposable)
 }
 
 export function deactivate() {}
