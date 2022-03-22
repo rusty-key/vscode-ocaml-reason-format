@@ -8,12 +8,15 @@ import * as vscode from 'vscode'
 const exec = util.promisify(process.exec),
   { access, mkdir, readFile, copyFile, unlink } = fs.promises
 
+let log = vscode.window.createOutputChannel('ocaml-reason-format')
+
 const tmpDir = '/tmp/vscode-ocaml-reason-format'
 
 async function prepareTmpDir() {
   try {
     await access(tmpDir)
   } catch (e) {
+    log.appendLine(`${tmpDir} is missing; creating it.`)
     await mkdir(tmpDir, { recursive: true })
   }
 }
@@ -30,16 +33,19 @@ function getFullTextRange(textEditor: vscode.TextEditor) {
   )
 }
 
+log.appendLine(`Loading extension...`)
+
 export function activate(context: vscode.ExtensionContext) {
   const configuration = vscode.workspace.getConfiguration('ocaml-reason-format')
   const rootPath = vscode.workspace.rootPath || ''
+
+  log.appendLine(`Activating extension...`)
 
   const disposable1 = vscode.languages.registerDocumentFormattingEditProvider(
     'ocaml',
     {
       async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
-        P,
       ): Promise<vscode.TextEdit[]> {
         const formatterPath = configuration.get<string | undefined>(
           'ocamlformat',
@@ -50,14 +56,17 @@ export function activate(context: vscode.ExtensionContext) {
         const textEditor = vscode.window.activeTextEditor
 
         if (textEditor) {
+          log.appendLine(`Formatting document with '${formatter}'...`)
+
           const filePath = textEditor.document.fileName
           const extName = path.extname(filePath)
           const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
 
           await prepareTmpDir()
-          await exec(
-            `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`,
-          )
+
+          const command = `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`
+          log.appendLine('`' + command + `'`)
+          await exec(command)
 
           // TODO: Replace this with `document.getText()`, lest it break Format On Save:
           //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
@@ -85,19 +94,26 @@ export function activate(context: vscode.ExtensionContext) {
         const textEditor = vscode.window.activeTextEditor
 
         if (textEditor) {
+          log.appendLine(`Formatting document with '${formatter}'...`)
+
           const filePath = textEditor.document.fileName
           const extName = path.extname(filePath)
           const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
 
           prepareTmpDir()
+          log.appendLine(`Copying '${filePath}' to '${tmpFilePath}'...`)
           await copyFile(filePath, tmpFilePath)
-          await exec(`${formatter} ${tmpFilePath}`)
+
+          const command = `${formatter} ${tmpFilePath}`
+          log.appendLine('`' + command + `'`)
+          await exec(command)
 
           // TODO: Replace this with `document.getText()`, lest it break Format On Save:
           //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
           const formattedText = await readFile(tmpFilePath, 'utf8')
           const textRange = getFullTextRange(textEditor)
 
+          log.appendLine(`Deleting '${tmpFilePath}'...`)
           unlink(tmpFilePath)
 
           return [vscode.TextEdit.replace(textRange, formattedText)]
