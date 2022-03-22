@@ -1,3 +1,4 @@
+import { tmpdir } from 'os'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as process from 'child_process'
@@ -6,18 +7,18 @@ import * as uuid from 'uuid'
 import * as vscode from 'vscode'
 
 const exec = util.promisify(process.exec),
-  { access, mkdir, readFile, copyFile, unlink } = fs.promises
+  { copyFile, mkdir, mkdtemp, readFile, unlink } = fs.promises
 
 let log = vscode.window.createOutputChannel('ocaml-reason-format')
 
-const tmpDir = '/tmp/vscode-ocaml-reason-format'
+const ourTmpDirFormat = path.join(tmpdir(), 'vscode-ocaml-reason-format-')
 
 async function prepareTmpDir() {
   try {
-    await access(tmpDir)
-  } catch (e) {
-    log.appendLine(`${tmpDir} is missing; creating it.`)
-    await mkdir(tmpDir, { recursive: true })
+    return await mkdtemp(ourTmpDirFormat)
+  } catch (err) {
+    log.appendLine(`Error creating ${ourTmpDirFormat}XXXXXX: ${err}`)
+    throw err
   }
 }
 
@@ -35,11 +36,13 @@ function getFullTextRange(textEditor: vscode.TextEditor) {
 
 log.appendLine(`Loading extension...`)
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   const configuration = vscode.workspace.getConfiguration('ocaml-reason-format')
   const rootPath = vscode.workspace.rootPath || ''
 
   log.appendLine(`Activating extension...`)
+  const ourTmpDir = await prepareTmpDir()
+  log.appendLine(`Using tmpDir ${ourTmpDir}`)
 
   const disposable1 = vscode.languages.registerDocumentFormattingEditProvider(
     { language: 'ocaml', scheme: 'file' },
@@ -60,7 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
 
           const filePath = textEditor.document.fileName
           const extName = path.extname(filePath)
-          const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
+          const tmpFilePath = `${path.join(ourTmpDir, uuid.v4())}${extName}`
 
           await prepareTmpDir()
 
@@ -98,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
 
           const filePath = textEditor.document.fileName
           const extName = path.extname(filePath)
-          const tmpFilePath = `${path.join(tmpDir, uuid.v4())}${extName}`
+          const tmpFilePath = `${path.join(ourTmpDir, uuid.v4())}${extName}`
 
           prepareTmpDir()
           log.appendLine(`Copying '${filePath}' to '${tmpFilePath}'...`)
