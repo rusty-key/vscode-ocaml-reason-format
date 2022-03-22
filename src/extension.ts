@@ -42,7 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
   log.appendLine(`Activating extension...`)
 
   const disposable1 = vscode.languages.registerDocumentFormattingEditProvider(
-    'ocaml',
+    { language: 'ocaml', scheme: 'file' },
     {
       async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
@@ -82,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
   )
 
   const disposable2 = vscode.languages.registerDocumentFormattingEditProvider(
-    'reason',
+    { language: 'reason', scheme: 'file' },
     {
       async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
