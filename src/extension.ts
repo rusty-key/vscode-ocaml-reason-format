@@ -69,7 +69,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
           const command = `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`
           log.appendLine('`' + command + `'`)
-          await exec(command)
+          try {
+            await exec(command)
+          } catch (e) {
+            log.appendLine(e.stderr)
+            vscode.window.showErrorMessage(e.stderr)
+            throw e
+          }
+
 
           // TODO: Replace this with `document.getText()`, lest it break Format On Save:
           //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
@@ -109,7 +116,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
           const command = `${formatter} ${tmpFilePath}`
           log.appendLine('`' + command + `'`)
-          await exec(command)
+          try {
+            await exec(command)
+          } catch (e) {
+            log.appendLine(e.stderr)
+            vscode.window.showErrorMessage(e.stderr)
+            throw e
+          }
 
           // TODO: Replace this with `document.getText()`, lest it break Format On Save:
           //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
