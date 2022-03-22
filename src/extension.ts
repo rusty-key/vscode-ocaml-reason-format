@@ -37,9 +37,6 @@ function getFullTextRange(textEditor: vscode.TextEditor) {
 log.appendLine(`Loading extension...`)
 
 export async function activate(context: vscode.ExtensionContext) {
-  const configuration = vscode.workspace.getConfiguration('ocaml-reason-format')
-  const rootPath = vscode.workspace.rootPath || ''
-
   log.appendLine(`Activating extension...`)
   const ourTmpDir = await prepareTmpDir()
   log.appendLine(`Using tmpDir ${ourTmpDir}`)
@@ -50,6 +47,11 @@ export async function activate(context: vscode.ExtensionContext) {
       async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
       ): Promise<vscode.TextEdit[]> {
+        const configuration = vscode.workspace.getConfiguration(
+          'ocaml-reason-format',
+        )
+        const rootPath = vscode.workspace.rootPath || ''
+
         const formatterPath = configuration.get<string | undefined>(
           'ocamlformat',
         )
@@ -77,7 +79,6 @@ export async function activate(context: vscode.ExtensionContext) {
             throw e
           }
 
-
           // TODO: Replace this with `document.getText()`, lest it break Format On Save:
           //   <https://github.com/microsoft/vscode/issues/90273#issuecomment-584087026>
           const formattedText = await readFile(tmpFilePath, 'utf8')
@@ -97,6 +98,11 @@ export async function activate(context: vscode.ExtensionContext) {
       async provideDocumentFormattingEdits(
         document: vscode.TextDocument,
       ): Promise<vscode.TextEdit[]> {
+        const configuration = vscode.workspace.getConfiguration(
+          'ocaml-reason-format',
+        )
+        const rootPath = vscode.workspace.rootPath || ''
+
         const formatterPath = configuration.get<string | undefined>('refmt')
         const formatter = formatterPath
           ? path.resolve(rootPath, formatterPath)
