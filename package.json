@@ -19,7 +19,7 @@
     "onLanguage:ocaml",
     "onLanguage:reason"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/bundle.js",
   "contributes": {
     "languages": [
       {
@@ -47,6 +47,11 @@
       "type": "object",
       "title": "Formatter configuration",
       "properties": {
+        "ocaml-reason-format.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether or not this plugin should be used for formatting"
+        },
         "ocaml-reason-format.ocamlformat": {
           "type": "string",
           "default": "ocamlformat",
@@ -61,16 +66,19 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "yarn run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/bundle.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "yarn run compile && node ./node_modules/vscode/bin/test"
+    "test-compile": "tsc -p ./",
+    "test": "yarn run test-compile && node ./node_modules/vscode/bin/test"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
     "@types/node": "^10.12.21",
     "@types/uuid": "^8.3.3",
+    "esbuild": "^0.14.27",
     "tslint": "^5.12.1",
     "typescript": "^3.3.1",
     "uuid": "^8.3.2",
