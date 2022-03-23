@@ -60,10 +60,7 @@ function registerOcamlFormatter(ctx: vscode.ExtensionContext, tmpDir: string) {
 
           const rootPath = vscode.workspace.rootPath || ''
 
-          const formatterPath = config.get<string | undefined>('ocamlformat')
-          const formatter = formatterPath
-            ? path.resolve(rootPath, formatterPath)
-            : 'ocamlformat'
+          const formatter = config.get<string | undefined>('ocamlformat')
           const textEditor = vscode.window.activeTextEditor
 
           if (textEditor) {
@@ -75,7 +72,7 @@ function registerOcamlFormatter(ctx: vscode.ExtensionContext, tmpDir: string) {
 
             await prepareTmpDir()
 
-            const command = `cd ${rootPath} && ${formatter} ${filePath} > ${tmpFilePath}`
+            const command = `cd ${rootPath} &&\n  ${formatter} ${filePath} > ${tmpFilePath}`
             log.appendLine('`' + command + `'`)
             try {
               await exec(command)
@@ -119,10 +116,7 @@ function registerReasonFormatter(ctx: vscode.ExtensionContext, tmpDir: string) {
 
           const rootPath = vscode.workspace.rootPath || ''
 
-          const formatterPath = config.get<string | undefined>('refmt')
-          const formatter = formatterPath
-            ? path.resolve(rootPath, formatterPath)
-            : 'refmt'
+          const formatter = config.get<string | undefined>('refmt')
           const textEditor = vscode.window.activeTextEditor
 
           if (textEditor) {
@@ -136,7 +130,7 @@ function registerReasonFormatter(ctx: vscode.ExtensionContext, tmpDir: string) {
             log.appendLine(`Copying '${filePath}' to '${tmpFilePath}'...`)
             await copyFile(filePath, tmpFilePath)
 
-            const command = `${formatter} ${tmpFilePath}`
+            const command = `cd ${rootPath} &&\n  ${formatter} ${tmpFilePath}`
             log.appendLine('`' + command + `'`)
             try {
               await exec(command)
